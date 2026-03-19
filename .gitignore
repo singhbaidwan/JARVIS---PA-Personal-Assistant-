@@ -11,7 +11,12 @@ jarvis-agent/.build/
 jarvis-ai/.venv/
 jarvis-ai/__pycache__/
 jarvis-ai/.pytest_cache/
+jarvis-ai/app/__pycache__/
+jarvis-ai/app/api/__pycache__/
+jarvis-ai/app/api/routes/__pycache__
+
 
 jarvis-runtime/.pids/
+jarvis-runtime/__pycache__/
 
 jarvis-data/db/*.db
