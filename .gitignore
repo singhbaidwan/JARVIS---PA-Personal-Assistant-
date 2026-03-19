@@ -1,0 +1,17 @@
+.DS_Store
+*.log
+*.pid
+
+jarvis-core/.gradle/
+jarvis-core/build/
+jarvis-core/out/
+
+jarvis-agent/.build/
+
+jarvis-ai/.venv/
+jarvis-ai/__pycache__/
+jarvis-ai/.pytest_cache/
+
+jarvis-runtime/.pids/
+
+jarvis-data/db/*.db
