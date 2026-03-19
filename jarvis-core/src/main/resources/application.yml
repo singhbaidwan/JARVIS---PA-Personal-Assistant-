@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: jarvis-core
+  datasource:
+    url: jdbc:sqlite:../jarvis-data/db/jarvis.db
+    driver-class-name: org.sqlite.JDBC
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+
+server:
+  port: 8080
+
+logging:
+  level:
+    root: INFO
+    com.jarvis.core: INFO

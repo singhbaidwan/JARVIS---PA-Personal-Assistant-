@@ -287,3 +287,5 @@ Don’t build everything at once:
 10. LLM integration
 11. Avatar UI
 
+#### Future 
+- 3d interface for buliding your own flows , where user can simply drag and drop and do it
