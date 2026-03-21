@@ -30,6 +30,7 @@ dependencies {
     runtimeOnly("org.xerial:sqlite-jdbc:3.46.1.3")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.withType<KotlinCompile> {

@@ -14,6 +14,15 @@ import java.time.Instant
 interface EventRepository {
     fun save(event: Event): Event
     fun findRecent(limit: Int): List<Event>
+    fun findByTypesBetween(
+        startInclusive: Instant,
+        endExclusive: Instant,
+        types: Set<String>,
+    ): List<Event>
+    fun findLatestByTypesBefore(
+        before: Instant,
+        types: Set<String>,
+    ): Event?
 }
 
 @Repository
@@ -58,14 +67,61 @@ class SqliteEventRepository(
             LIMIT ?
         """.trimIndent()
 
-        return jdbcTemplate.query(sql, { rs, _ ->
-            Event(
-                id = rs.getLong("id"),
-                type = rs.getString("type"),
-                payload = objectMapper.readTree(rs.getString("payload")),
-                source = rs.getString("source"),
-                createdAt = Instant.parse(rs.getString("created_at")),
-            )
-        }, limit)
+        return jdbcTemplate.query(sql, eventRowMapper(), limit)
+    }
+
+    override fun findByTypesBetween(
+        startInclusive: Instant,
+        endExclusive: Instant,
+        types: Set<String>,
+    ): List<Event> {
+        if (types.isEmpty()) {
+            return emptyList()
+        }
+
+        val placeholders = types.joinToString(",") { "?" }
+        val sql = """
+            SELECT id, type, payload, source, created_at
+            FROM events
+            WHERE type IN ($placeholders)
+              AND julianday(created_at) >= julianday(?)
+              AND julianday(created_at) < julianday(?)
+            ORDER BY julianday(created_at) ASC
+        """.trimIndent()
+
+        val params = types.toList() + listOf(startInclusive.toString(), endExclusive.toString())
+        return jdbcTemplate.query(sql, eventRowMapper(), *params.toTypedArray())
+    }
+
+    override fun findLatestByTypesBefore(
+        before: Instant,
+        types: Set<String>,
+    ): Event? {
+        if (types.isEmpty()) {
+            return null
+        }
+
+        val placeholders = types.joinToString(",") { "?" }
+        val sql = """
+            SELECT id, type, payload, source, created_at
+            FROM events
+            WHERE type IN ($placeholders)
+              AND julianday(created_at) < julianday(?)
+            ORDER BY julianday(created_at) DESC
+            LIMIT 1
+        """.trimIndent()
+
+        val params = types.toList() + before.toString()
+        return jdbcTemplate.query(sql, eventRowMapper(), *params.toTypedArray()).firstOrNull()
+    }
+
+    private fun eventRowMapper() = { rs: java.sql.ResultSet, _: Int ->
+        Event(
+            id = rs.getLong("id"),
+            type = rs.getString("type"),
+            payload = objectMapper.readTree(rs.getString("payload")),
+            source = rs.getString("source"),
+            createdAt = Instant.parse(rs.getString("created_at")),
+        )
     }
 }

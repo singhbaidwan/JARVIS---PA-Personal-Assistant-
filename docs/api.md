@@ -3,6 +3,7 @@
 ## jarvis-core
 - `POST /event`
 - `GET /event`
+- `GET /insights/daily`
 - `GET /health`
 
 ## jarvis-ai
