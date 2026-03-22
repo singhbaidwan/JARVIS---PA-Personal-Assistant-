@@ -1,16 +1,47 @@
 import Foundation
 
 struct Config {
-    let coreEventURL: URL
+    let coreBaseURL: URL
+    let agentId: String
+    let commandPollIntervalSeconds: UInt64
+
+    var coreEventURL: URL {
+        coreBaseURL.appendingPathComponent("event")
+    }
 
     static func load() -> Config {
         let env = ProcessInfo.processInfo.environment
-        let endpoint = env["JARVIS_CORE_EVENT_URL"] ?? "http://localhost:8080/event"
-
-        guard let url = URL(string: endpoint) else {
-            fatalError("Invalid JARVIS_CORE_EVENT_URL: \(endpoint)")
+        let baseURLString: String
+        if let configuredBase = env["JARVIS_CORE_BASE_URL"] {
+            baseURLString = configuredBase
+        } else if let configuredEvent = env["JARVIS_CORE_EVENT_URL"], let eventURL = URL(string: configuredEvent) {
+            baseURLString = deriveBaseURL(fromLegacyEventURL: eventURL).absoluteString
+        } else {
+            baseURLString = "http://localhost:8080"
         }
 
-        return Config(coreEventURL: url)
+        guard let baseURL = URL(string: baseURLString) else {
+            fatalError("Invalid core URL: \(baseURLString)")
+        }
+
+        let pollIntervalSeconds = UInt64(env["JARVIS_COMMAND_POLL_INTERVAL_SECONDS"] ?? "3") ?? 3
+        let agentId = env["JARVIS_AGENT_ID"] ?? "jarvis-agent"
+
+        return Config(
+            coreBaseURL: baseURL,
+            agentId: agentId,
+            commandPollIntervalSeconds: max(1, pollIntervalSeconds)
+        )
+    }
+
+    private static func deriveBaseURL(fromLegacyEventURL eventURL: URL) -> URL {
+        guard eventURL.path.hasSuffix("/event") else {
+            return eventURL
+        }
+
+        var components = URLComponents(url: eventURL, resolvingAgainstBaseURL: false)
+        let trimmedPath = String(eventURL.path.dropLast("/event".count))
+        components?.path = trimmedPath.isEmpty ? "/" : trimmedPath
+        return components?.url ?? eventURL
     }
 }

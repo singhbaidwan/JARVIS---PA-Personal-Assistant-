@@ -1,87 +1,48 @@
-# JARVIS - Personal Assistant (Phase 0 + Phase 1 + Phase 2)
+# JARVIS - Personal Assistant (Phase 0 + Phase 1 + Phase 2 + Phase 3)
 
 This repository now includes:
 - Phase 0 monorepo setup
 - Phase 1 event pipeline foundation
 - Phase 2 daily insights engine (`/insights/daily` + CLI output)
+- Phase 3 command execution layer (`/command` queue + agent execution)
 
 ## Monorepo Layout
 
-- `jarvis-core` - Kotlin + Spring Boot core service (event API + SQLite)
-- `jarvis-agent` - Swift macOS app monitor (posts app-switch events)
+- `jarvis-core` - Kotlin + Spring Boot core service (events, insights, command queue)
+- `jarvis-agent` - Swift macOS agent (app monitoring + command execution)
 - `jarvis-ai` - Python FastAPI AI service scaffold
 - `jarvis-runtime` - Process manager scripts
 - `jarvis-ui` - UI placeholder scaffold
 - `jarvis-data` - local DB/migrations/vector storage directories
 - `logs` - service logs
 
-## Phase 1 Event Pipeline
+## Core APIs
 
-### 1. Start `jarvis-core`
-
-`jarvis-core` currently expects Gradle wrapper (`./gradlew`). If wrapper is not yet added, install Gradle and generate it:
-
-```bash
-cd jarvis-core
-gradle wrapper
-./gradlew bootRun
-```
-
-Core API:
 - `POST /event`
 - `GET /event`
 - `GET /insights/daily`
+- `POST /command`
+- `GET /command`
+- `POST /command/claim`
+- `POST /command/{id}/result`
 - `GET /health`
 
-### 2. Start `jarvis-agent`
+## Agent Configuration
+
+Preferred base URL:
 
 ```bash
-cd jarvis-agent
-swift run
+export JARVIS_CORE_BASE_URL=http://127.0.0.1:8080
 ```
 
-Optional endpoint override:
+Optional:
 
 ```bash
-export JARVIS_CORE_EVENT_URL=http://127.0.0.1:8080/event
+export JARVIS_AGENT_ID=jarvis-agent
+export JARVIS_COMMAND_POLL_INTERVAL_SECONDS=3
 ```
 
-### 3. Test End-to-End Quickly
-
-Manual post:
-
-```bash
-curl -X POST http://127.0.0.1:8080/event \
-  -H "Content-Type: application/json" \
-  -d '{"type":"APP_OPENED","payload":{"app":"Chrome"},"source":"manual-test"}'
-```
-
-Then check recent events:
-
-```bash
-curl http://127.0.0.1:8080/event
-```
-
-### 4. Get Daily Insights
-
-API:
-
-```bash
-curl http://127.0.0.1:8080/insights/daily
-```
-
-Optional date:
-
-```bash
-curl "http://127.0.0.1:8080/insights/daily?date=2026-03-21"
-```
-
-CLI output:
-
-```bash
-./scripts/insights.sh
-./scripts/insights.sh --date 2026-03-21
-```
+Legacy `JARVIS_CORE_EVENT_URL` is still supported.
 
 ## Runtime Scripts
 
@@ -92,7 +53,7 @@ CLI output:
 - `scripts/reset_db.sh`
 - `scripts/tail_logs.sh`
 
-## Run and Verify Phase 2
+## Verify Phase 3 End-to-End
 
 From repo root:
 
@@ -102,52 +63,51 @@ From repo root:
 ./scripts/start_all.sh
 ```
 
-2. Confirm services are running:
+2. Confirm service status:
 
 ```bash
 ./scripts/status.sh
 ```
 
-`jarvis-core` should be healthy on `http://127.0.0.1:8080/health`.
-
-3. Send sample events:
+3. Queue a command:
 
 ```bash
-curl -X POST http://127.0.0.1:8080/event \
+curl -X POST http://127.0.0.1:8080/command \
   -H "Content-Type: application/json" \
-  -d '{"type":"APP_OPENED","payload":{"app":"Chrome"},"source":"manual-test"}'
+  -d '{"action":"OPEN_APP","app":"Calculator","priority":3}'
+```
 
-curl -X POST http://127.0.0.1:8080/event \
+4. Check command state transitions:
+
+```bash
+curl http://127.0.0.1:8080/command
+```
+
+Expected lifecycle: `QUEUED` -> `IN_PROGRESS` -> `SUCCEEDED` (or retry/fail).
+
+5. Optional retry + rollback example:
+
+```bash
+curl -X POST http://127.0.0.1:8080/command \
   -H "Content-Type: application/json" \
-  -d '{"type":"APP_SWITCHED","payload":{"from":"Chrome","to":"VS Code"},"source":"manual-test"}'
+  -d '{
+    "action":"OPEN_APP",
+    "app":"NotARealApp",
+    "maxAttempts":2,
+    "rollbackAction":"OPEN_APP",
+    "rollbackParams":{"app":"Finder"}
+  }'
 ```
 
-4. Verify raw events:
+6. Stop services:
 
 ```bash
-curl http://127.0.0.1:8080/event
+./scripts/stop_all.sh
 ```
 
-5. Verify daily insights API:
+## Testing
 
-```bash
-curl http://127.0.0.1:8080/insights/daily
-```
-
-Optional date:
-
-```bash
-curl "http://127.0.0.1:8080/insights/daily?date=2026-03-21"
-```
-
-6. Verify CLI insights output:
-
-```bash
-./scripts/insights.sh
-./scripts/insights.sh --date 2026-03-21
-```
-
-7. Run tests:
+Kotlin core tests:
 
 ```bash
 cd jarvis-core
@@ -155,18 +115,16 @@ cd jarvis-core
 cd ..
 ```
 
-8. Stop services:
+Swift build:
 
 ```bash
-./scripts/stop_all.sh
+cd jarvis-agent
+swift build
+cd ..
 ```
-
-Expected result:
-- `/insights/daily` returns `apps`, `totalTracked`, `totalTrackedSeconds`.
-- `./scripts/insights.sh` prints per-app durations and a total.
 
 ## Notes
 
 - SQLite DB path: `jarvis-data/db/jarvis.db`
 - Core log file: `logs/jarvis-core.log`
-- Architecture and planning docs remain in `discussions/`.
+- Architecture/planning docs: `discussions/`

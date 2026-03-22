@@ -242,6 +242,14 @@ User → Core → Agent → macOS
 ✔ “Open Chrome” works
 ✔ First automation capability
 
+### ✅ Phase 3 Implementation Checkpoint (March 21, 2026)
+
+* [x] `POST /command` implemented in `jarvis-core`
+* [x] Agent command claim/result APIs implemented (`/command/claim`, `/command/{id}/result`)
+* [x] Swift agent polling + command execution path implemented
+* [x] `OPEN_APP` action execution through `NSWorkspace`
+* [x] Retry + rollback support added to command queue
+
 ---
 
 # 🔄 Phase 4: Task Engine (Days 8–10)

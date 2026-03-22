@@ -43,17 +43,17 @@ Now we expand into **real intelligence + scale + product polish**
 
 * [ ] Conditional workflows
   → *If battery < 20%, enable low power mode*
-* [ ] Scheduled workflows (cron-like)
+* [x] Scheduled workflows (command `scheduledAt`)
 * [ ] Multi-step pipelines with retry logic
-* [ ] Failure handling + rollback support
+* [x] Failure handling + rollback support
 
 ---
 
 ### 🔄 Parallel Execution System
 
-* [ ] Background job scheduler
-* [ ] Priority-based task queue
-* [ ] Async execution engine
+* [x] Background job scheduler
+* [x] Priority-based task queue
+* [x] Async execution engine
 * [ ] Worker pool system
 
 ---
@@ -70,6 +70,21 @@ Now we expand into **real intelligence + scale + product polish**
 
 ✔ Production-grade automation system
 ✔ Concurrent execution (like a real OS scheduler)
+
+### 📌 Phase 3 Checkpoint (March 21, 2026)
+
+Implemented now:
+- Kotlin command API (`POST /command`, `GET /command`)
+- Agent claim/result APIs (`POST /command/claim`, `POST /command/{id}/result`)
+- SQLite automation command queue with priority + scheduled execution
+- Retry backoff + terminal failure rollback command enqueue
+- Swift agent command poller and `OPEN_APP` execution via `NSWorkspace`
+
+Remaining for full Phase 3:
+- Conditional workflows
+- Multi-step pipelines/DAG workflows
+- Worker pool scaling
+- System optimization layer items
 
 ---
 
