@@ -26,7 +26,11 @@ def load_service_configs() -> list[ServiceConfig]:
         ),
         ServiceConfig(
             name="jarvis-agent",
-            command="swift run",
+            command=(
+                "SWIFT_MODULE_CACHE_PATH=../jarvis-data/build/swift-module-cache "
+                "CLANG_MODULE_CACHE_PATH=../jarvis-data/build/clang-module-cache "
+                "swift run --build-path ../jarvis-data/build/jarvis-agent"
+            ),
             workdir=ROOT_DIR / "jarvis-agent",
         ),
     ]

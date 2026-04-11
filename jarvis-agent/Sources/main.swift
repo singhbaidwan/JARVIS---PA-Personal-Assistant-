@@ -9,7 +9,9 @@ let commandPoller = CommandPoller(
     coreClient: coreClient,
     commandExecutor: commandExecutor,
     agentId: config.agentId,
-    pollIntervalSeconds: config.commandPollIntervalSeconds
+    pollIntervalSeconds: config.commandPollIntervalSeconds,
+    workerCount: config.commandWorkerCount,
+    executionTimeoutSeconds: config.commandExecutionTimeoutSeconds
 )
 
 appMonitor.start()

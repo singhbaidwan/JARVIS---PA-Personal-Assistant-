@@ -25,6 +25,9 @@ This repository now includes:
 - `GET /command`
 - `POST /command/claim`
 - `POST /command/{id}/result`
+- `POST /workflow`
+- `GET /workflow`
+- `GET /workflow/{id}`
 - `GET /health`
 
 ## Agent Configuration
@@ -40,6 +43,14 @@ Optional:
 ```bash
 export JARVIS_AGENT_ID=jarvis-agent
 export JARVIS_COMMAND_POLL_INTERVAL_SECONDS=3
+export JARVIS_COMMAND_WORKER_COUNT=2
+export JARVIS_COMMAND_EXECUTION_TIMEOUT_SECONDS=15
+```
+
+Core lease recovery (optional):
+
+```bash
+export JARVIS_COMMAND_CLAIM_TIMEOUT_SECONDS=30
 ```
 
 Legacy `JARVIS_CORE_EVENT_URL` is still supported.
@@ -77,6 +88,8 @@ curl -X POST http://127.0.0.1:8080/command \
   -d '{"action":"OPEN_APP","app":"Calculator","priority":3}'
 ```
 
+Note: `POST /command` only enqueues work. The `jarvis-agent` process must be running to claim and execute it.
+
 4. Check command state transitions:
 
 ```bash
@@ -84,6 +97,8 @@ curl http://127.0.0.1:8080/command
 ```
 
 Expected lifecycle: `QUEUED` -> `IN_PROGRESS` -> `SUCCEEDED` (or retry/fail).
+
+If a command is claimed but never completed (for example, an agent crash), core automatically recovers stale claims after the configured timeout.
 
 5. Optional retry + rollback example:
 
@@ -99,7 +114,31 @@ curl -X POST http://127.0.0.1:8080/command \
   }'
 ```
 
-6. Stop services:
+6. Queue a conditional multi-step workflow:
+
+```bash
+curl -X POST http://127.0.0.1:8080/workflow \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Low battery safeguard",
+    "context": {"battery": 15},
+    "condition": {"leftKey": "battery", "operator": "LT", "rightValue": 20},
+    "steps": [
+      {"action": "OPEN_APP", "app": "Calculator", "priority": 3},
+      {"action": "CLOSE_APP", "app": "Calculator", "priority": 3}
+    ]
+  }'
+```
+
+7. Check workflow status:
+
+```bash
+curl http://127.0.0.1:8080/workflow
+```
+
+Expected workflow lifecycle: `IN_PROGRESS` -> `SUCCEEDED` (or `FAILED` / `SKIPPED`).
+
+8. Stop services:
 
 ```bash
 ./scripts/stop_all.sh
@@ -127,4 +166,7 @@ cd ..
 
 - SQLite DB path: `jarvis-data/db/jarvis.db`
 - Core log file: `logs/jarvis-core.log`
+- Agent build/cache path (runtime): `jarvis-data/build/`
 - Architecture/planning docs: `discussions/`
+
+If `jarvis-agent` fails to start with `.build` permission errors, use runtime scripts (`./scripts/start_all.sh`) so Swift build output goes to `jarvis-data/build/` instead of `jarvis-agent/.build`.

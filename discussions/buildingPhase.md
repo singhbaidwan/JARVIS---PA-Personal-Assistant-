@@ -246,9 +246,13 @@ User → Core → Agent → macOS
 
 * [x] `POST /command` implemented in `jarvis-core`
 * [x] Agent command claim/result APIs implemented (`/command/claim`, `/command/{id}/result`)
-* [x] Swift agent polling + command execution path implemented
-* [x] `OPEN_APP` action execution through `NSWorkspace`
+* [x] Swift agent polling + worker pool command execution implemented
+* [x] `OPEN_APP` and `CLOSE_APP` actions through `NSWorkspace`
 * [x] Retry + rollback support added to command queue
+* [x] Stale claim recovery for stuck `IN_PROGRESS` commands
+* [x] Workflow APIs added (`POST /workflow`, `GET /workflow`, `GET /workflow/{id}`)
+* [x] Conditional workflow evaluation (`context` + comparison operators)
+* [x] Multi-step pipeline orchestration (next step queued on prior success)
 
 ---
 

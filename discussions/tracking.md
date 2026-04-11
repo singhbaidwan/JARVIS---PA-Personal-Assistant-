@@ -41,10 +41,10 @@ Now we expand into **real intelligence + scale + product polish**
 
 ### 🔄 Automation Engine (FULL)
 
-* [ ] Conditional workflows
+* [x] Conditional workflows
   → *If battery < 20%, enable low power mode*
 * [x] Scheduled workflows (command `scheduledAt`)
-* [ ] Multi-step pipelines with retry logic
+* [x] Multi-step pipelines with retry logic
 * [x] Failure handling + rollback support
 
 ---
@@ -54,7 +54,7 @@ Now we expand into **real intelligence + scale + product polish**
 * [x] Background job scheduler
 * [x] Priority-based task queue
 * [x] Async execution engine
-* [ ] Worker pool system
+* [x] Worker pool system
 
 ---
 
@@ -78,12 +78,14 @@ Implemented now:
 - Agent claim/result APIs (`POST /command/claim`, `POST /command/{id}/result`)
 - SQLite automation command queue with priority + scheduled execution
 - Retry backoff + terminal failure rollback command enqueue
-- Swift agent command poller and `OPEN_APP` execution via `NSWorkspace`
+- Swift agent command poller with configurable worker pool + execution timeout
+- `OPEN_APP` and `CLOSE_APP` execution via `NSWorkspace`
+- Stale claim recovery (auto requeue/fail for stuck `IN_PROGRESS` commands)
+- Workflow APIs (`POST /workflow`, `GET /workflow`, `GET /workflow/{id}`)
+- Conditional workflow evaluation via context + comparison operators
+- Multi-step workflow orchestration with step-by-step command enqueue
 
 Remaining for full Phase 3:
-- Conditional workflows
-- Multi-step pipelines/DAG workflows
-- Worker pool scaling
 - System optimization layer items
 
 ---

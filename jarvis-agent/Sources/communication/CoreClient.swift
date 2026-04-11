@@ -40,6 +40,7 @@ final class CoreClient {
         var request = URLRequest(url: commandClaimEndpoint())
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 15
 
         do {
             request.httpBody = try encoder.encode(CommandClaimRequest(agentId: agentId))
@@ -66,10 +67,11 @@ final class CoreClient {
         }
     }
 
-    func reportCommandResult(commandId: Int64, status: CommandResultStatus, error: String?) async {
+    func reportCommandResult(commandId: Int64, status: CommandResultStatus, error: String?) async -> Bool {
         var request = URLRequest(url: commandResultEndpoint(commandId: commandId))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 15
 
         do {
             request.httpBody = try encoder.encode(CommandResultRequest(status: status, error: error))
@@ -77,17 +79,19 @@ final class CoreClient {
 
             guard let httpResponse = response as? HTTPURLResponse else {
                 print("jarvis-agent: non-http response for command result id=\(commandId)")
-                return
+                return false
             }
 
             guard (200...299).contains(httpResponse.statusCode) else {
                 print("jarvis-agent: result rejected id=\(commandId) status=\(httpResponse.statusCode)")
-                return
+                return false
             }
 
             print("jarvis-agent: command result accepted id=\(commandId)")
+            return true
         } catch {
             print("jarvis-agent: failed to report command result id=\(commandId) error=\(error.localizedDescription)")
+            return false
         }
     }
 

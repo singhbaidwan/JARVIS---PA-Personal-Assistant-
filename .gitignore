@@ -21,3 +21,5 @@ jarvis-runtime/.pids/
 jarvis-runtime/__pycache__/
 
 jarvis-data/db/*.db
+.clang-module-cache
+jarvis-data/build
