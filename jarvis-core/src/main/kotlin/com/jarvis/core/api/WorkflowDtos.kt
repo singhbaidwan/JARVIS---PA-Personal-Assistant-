@@ -39,6 +39,8 @@ data class WorkflowStepRequest(
     @field:Min(1)
     @field:Max(10)
     val maxAttempts: Int = 3,
+    @field:Size(max = 24)
+    val dependsOn: List<Int>? = null,
     val rollbackAction: String? = null,
     val rollbackParams: Map<String, Any?> = emptyMap(),
 )
@@ -62,6 +64,7 @@ data class WorkflowStepResponse(
     val params: JsonNode,
     val priority: Int,
     val maxAttempts: Int,
+    val dependsOn: List<Int>,
     val rollbackAction: String?,
     val rollbackParams: JsonNode?,
     val status: WorkflowStepStatus,
@@ -92,6 +95,7 @@ fun AutomationWorkflowStep.toResponse(): WorkflowStepResponse = WorkflowStepResp
     params = params,
     priority = priority,
     maxAttempts = maxAttempts,
+    dependsOn = params.extractDependsOn(),
     rollbackAction = rollbackAction,
     rollbackParams = rollbackParams,
     status = status,
@@ -100,6 +104,24 @@ fun AutomationWorkflowStep.toResponse(): WorkflowStepResponse = WorkflowStepResp
     createdAt = createdAt,
     updatedAt = updatedAt,
 )
+
+private fun JsonNode.extractDependsOn(): List<Int> {
+    val dependencyNode = this.path("_dependsOn")
+    if (!dependencyNode.isArray) {
+        return emptyList()
+    }
+    return dependencyNode
+        .mapNotNull { entry ->
+            when {
+                entry.isInt -> entry.asInt()
+                entry.isLong -> entry.asLong().toInt()
+                entry.isTextual -> entry.asText().toIntOrNull()
+                else -> null
+            }
+        }
+        .distinct()
+        .sorted()
+}
 
 fun AutomationWorkflowRun.toResponse(steps: List<AutomationWorkflowStep>): WorkflowRunResponse = WorkflowRunResponse(
     id = id,

@@ -2,8 +2,9 @@
   "name": "jarvis-ui",
   "version": "0.1.0",
   "private": true,
-  "description": "Phase 0 placeholder for Tauri + React UI",
+  "description": "Phase 4 avatar interface for JARVIS",
   "scripts": {
-    "dev": "echo 'UI scaffold pending in later phase'"
+    "dev": "python3 -m http.server 5173 -d public",
+    "start": "python3 -m http.server 5173 -d public"
   }
 }

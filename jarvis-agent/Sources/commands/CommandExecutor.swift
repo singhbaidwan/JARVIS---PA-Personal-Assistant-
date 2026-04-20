@@ -6,8 +6,8 @@ struct CommandExecutionOutcome {
     let error: String?
 }
 
-@MainActor
 final class CommandExecutor {
+    @MainActor
     func execute(_ command: ClaimedCommand) async -> CommandExecutionOutcome {
         switch command.action.uppercased() {
         case "OPEN_APP":
@@ -22,6 +22,7 @@ final class CommandExecutor {
         }
     }
 
+    @MainActor
     private func openApp(_ command: ClaimedCommand) async -> CommandExecutionOutcome {
         let appURL: URL
         if let bundleId = command.params["bundleId"]?.stringValue, !bundleId.isEmpty {
@@ -61,6 +62,7 @@ final class CommandExecutor {
         }
     }
 
+    @MainActor
     private func closeApp(_ command: ClaimedCommand) -> CommandExecutionOutcome {
         let appName = command.params["app"]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let bundleId = command.params["bundleId"]?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""

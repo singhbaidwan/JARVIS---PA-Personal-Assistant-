@@ -3,23 +3,38 @@
 logs/*.gz
 *.pid
 
+# Kotlin / Gradle
 jarvis-core/.gradle/
 jarvis-core/build/
 jarvis-core/out/
+jarvis-core/bin/
 
+# Swift
 jarvis-agent/.build/
+.clang-module-cache/
 
+# Python
 jarvis-ai/.venv/
-jarvis-ai/__pycache__/
+jarvis-ai/venv/
 jarvis-ai/.pytest_cache/
-jarvis-ai/app/__pycache__/
-jarvis-ai/app/api/__pycache__/
-jarvis-ai/app/api/routes/__pycache__
+jarvis-ai/.mypy_cache/
+jarvis-ai/.ruff_cache/
+jarvis-ai/**/__pycache__/
+jarvis-runtime/**/__pycache__/
+**/*.py[cod]
 
-
+# Runtime
 jarvis-runtime/.pids/
-jarvis-runtime/__pycache__/
 
+# Data
 jarvis-data/db/*.db
-.clang-module-cache
-jarvis-data/build
+jarvis-data/build/
+
+# Frontend / Node
+jarvis-ui/node_modules/
+jarvis-ui/dist/
+jarvis-ui/.vite/
+
+# Editor
+.idea/
+.vscode/

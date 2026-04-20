@@ -287,5 +287,7 @@ Don’t build everything at once:
 10. LLM integration
 11. Avatar UI
 
+Status update (April 11, 2026): baseline implemented in codebase (`jarvis-ai /llm` + `jarvis-ui/public` avatar console).
+
 #### Future 
 - 3d interface for buliding your own flows , where user can simply drag and drop and do it

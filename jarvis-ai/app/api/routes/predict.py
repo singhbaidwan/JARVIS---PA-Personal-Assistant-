@@ -1,13 +1,17 @@
 from fastapi import APIRouter
 
 from app.api.schemas import PredictRequest, PredictResponse
+from app.intelligence import predict_next_action
 
 router = APIRouter(tags=["predict"])
 
 
 @router.post("/predict", response_model=PredictResponse)
 def predict(request: PredictRequest) -> PredictResponse:
-    has_code_activity = any(event.payload.get("to") == "Xcode" for event in request.events)
-    action = "OPEN_XCODE" if has_code_activity else "NO_ACTION"
-    confidence = 0.65 if has_code_activity else 0.25
-    return PredictResponse(predicted_action=action, confidence=confidence)
+    result = predict_next_action(request.events, request.reference_time)
+    return PredictResponse(
+        predicted_action=result.predicted_action,
+        confidence=result.confidence,
+        reason=result.reason,
+        context=result.context,
+    )

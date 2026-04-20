@@ -1,0 +1,2 @@
+class LlmIntegrationError(RuntimeError):
+    pass

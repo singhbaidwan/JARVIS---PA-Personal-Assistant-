@@ -16,7 +16,9 @@ import com.jarvis.core.workflow.WorkflowRunStatus
 import com.jarvis.core.workflow.WorkflowStepStatus
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.springframework.web.server.ResponseStatusException
 import java.time.Instant
 
 class WorkflowServiceTest {
@@ -94,6 +96,75 @@ class WorkflowServiceTest {
         assertEquals(WorkflowRunStatus.SUCCEEDED, completed.run.status)
         assertEquals(2, completed.run.completedSteps)
         assertEquals(WorkflowStepStatus.SUCCEEDED, completed.steps[1].status)
+    }
+
+    @Test
+    fun `parallel roots are enqueued and dependent step waits for both`() {
+        val commandRepo = FakeWorkflowCommandRepository()
+        val workflowRepo = FakeWorkflowRepository()
+        val service = WorkflowService(workflowRepo, commandRepo, objectMapper)
+
+        val details = service.submit(
+            WorkflowRequest(
+                steps = listOf(
+                    WorkflowStepRequest(action = "OPEN_APP", app = "VS Code", dependsOn = emptyList()),
+                    WorkflowStepRequest(action = "OPEN_APP", app = "Chrome", dependsOn = emptyList()),
+                    WorkflowStepRequest(action = "OPEN_APP", app = "Slack", dependsOn = listOf(1, 2)),
+                ),
+            ),
+        )
+
+        val runId = details.run.id!!
+        assertEquals(2, commandRepo.store.size)
+        val initial = service.get(runId)
+        assertEquals(WorkflowStepStatus.IN_PROGRESS, initial.steps[0].status)
+        assertEquals(WorkflowStepStatus.IN_PROGRESS, initial.steps[1].status)
+        assertEquals(WorkflowStepStatus.QUEUED, initial.steps[2].status)
+
+        val firstCommand = commandRepo.store.getValue(initial.steps[0].commandId!!)
+        service.onCommandCompletion(
+            command = firstCommand.copy(status = CommandStatus.SUCCEEDED, lastError = null),
+            resultStatus = CommandResultStatus.SUCCEEDED,
+            retryScheduled = false,
+            rollbackQueued = false,
+        )
+        val afterFirst = service.get(runId)
+        assertEquals(WorkflowStepStatus.SUCCEEDED, afterFirst.steps[0].status)
+        assertEquals(WorkflowStepStatus.IN_PROGRESS, afterFirst.steps[1].status)
+        assertEquals(WorkflowStepStatus.QUEUED, afterFirst.steps[2].status)
+        assertEquals(2, commandRepo.store.size)
+
+        val secondCommand = commandRepo.store.getValue(afterFirst.steps[1].commandId!!)
+        service.onCommandCompletion(
+            command = secondCommand.copy(status = CommandStatus.SUCCEEDED, lastError = null),
+            resultStatus = CommandResultStatus.SUCCEEDED,
+            retryScheduled = false,
+            rollbackQueued = false,
+        )
+
+        val afterSecond = service.get(runId)
+        assertEquals(WorkflowStepStatus.SUCCEEDED, afterSecond.steps[0].status)
+        assertEquals(WorkflowStepStatus.SUCCEEDED, afterSecond.steps[1].status)
+        assertEquals(WorkflowStepStatus.IN_PROGRESS, afterSecond.steps[2].status)
+        assertEquals(3, commandRepo.store.size)
+    }
+
+    @Test
+    fun `cyclic dependencies are rejected`() {
+        val commandRepo = FakeWorkflowCommandRepository()
+        val workflowRepo = FakeWorkflowRepository()
+        val service = WorkflowService(workflowRepo, commandRepo, objectMapper)
+
+        assertThrows(ResponseStatusException::class.java) {
+            service.submit(
+                WorkflowRequest(
+                    steps = listOf(
+                        WorkflowStepRequest(action = "OPEN_APP", app = "VS Code", dependsOn = listOf(2)),
+                        WorkflowStepRequest(action = "OPEN_APP", app = "Chrome", dependsOn = listOf(1)),
+                    ),
+                ),
+            )
+        }
     }
 }
 
