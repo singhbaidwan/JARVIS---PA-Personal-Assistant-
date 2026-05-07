@@ -50,30 +50,21 @@ class LocalLlmClientTests(unittest.TestCase):
                 self.assertEqual("Local plan ready.", response.response)
                 self.assertEqual(42, response.metadata["prompt_eval_count"])
 
-    def test_route_uses_local_provider_when_requested(self) -> None:
+    def test_route_uses_provider_router(self) -> None:
         expected = LlmResponse(
             response="Local endpoint response",
             model="llama3.2:latest",
             provider="local",
             metadata={},
         )
-        with patch("app.api.routes.llm.generate_local_response", return_value=expected) as mocked:
-            actual = llm_route.llm(LlmRequest(prompt="hello", provider="local"))
-            self.assertEqual(expected, actual)
-            mocked.assert_called_once()
+        with patch("app.api.routes.llm.resolve_provider", return_value="local") as mocked_resolve:
+            with patch("app.api.routes.llm.generator_for_provider") as mocked_factory:
+                mocked_factory.return_value = lambda request: expected
+                actual = llm_route.llm(LlmRequest(prompt="hello", provider="local"))
 
-    def test_route_uses_local_provider_from_env_default(self) -> None:
-        expected = LlmResponse(
-            response="Env local response",
-            model="llama3.2:latest",
-            provider="local",
-            metadata={},
-        )
-        with patch.dict(os.environ, {"JARVIS_LLM_PROVIDER": "local"}, clear=True):
-            with patch("app.api.routes.llm.generate_local_response", return_value=expected) as mocked:
-                actual = llm_route.llm(LlmRequest(prompt="hello"))
-                self.assertEqual(expected, actual)
-                mocked.assert_called_once()
+        self.assertEqual(expected, actual)
+        mocked_resolve.assert_called_once()
+        mocked_factory.assert_called_once_with("local")
 
 
 if __name__ == "__main__":

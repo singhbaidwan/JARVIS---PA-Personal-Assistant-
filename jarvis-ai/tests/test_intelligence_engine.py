@@ -38,6 +38,43 @@ class IntelligenceEngineTests(unittest.TestCase):
         self.assertIn(result.severity, {"MEDIUM", "HIGH", "CRITICAL"})
         self.assertGreaterEqual(result.score, 40.0)
 
+    def test_anomaly_names_process_for_cpu_spike(self) -> None:
+        now = datetime(2026, 4, 11, 12, 0, tzinfo=UTC)
+        events = [
+            EventInput(
+                type="RESOURCE_SAMPLE",
+                timestamp=now - timedelta(minutes=1),
+                payload={"process": "Chrome", "cpu_percent": 91.2, "memory_percent": 21.0},
+            ),
+        ]
+
+        result = detect_anomalies(events, reference_time=now)
+        self.assertTrue(result.anomaly_detected)
+        self.assertEqual("Chrome using 91% CPU", result.reason)
+        self.assertIn("Chrome using 91% CPU", result.signals)
+
+    def test_anomaly_detects_unusual_app_usage(self) -> None:
+        now = datetime(2026, 4, 11, 23, 30, tzinfo=UTC)
+        events = [
+            EventInput(
+                type="APP_SWITCHED",
+                timestamp=now - timedelta(days=day_offset, hours=10),
+                payload={"to": "VS Code" if day_offset % 2 else "Slack"},
+            )
+            for day_offset in range(1, 21)
+        ]
+        events.append(
+            EventInput(
+                type="APP_SWITCHED",
+                timestamp=now - timedelta(minutes=2),
+                payload={"to": "Steam"},
+            )
+        )
+
+        result = detect_anomalies(events, reference_time=now)
+        self.assertTrue(result.anomaly_detected)
+        self.assertIn("Behavioral outlier: Steam", result.signals[0])
+
     def test_recommendations_include_focus_and_break(self) -> None:
         now = datetime(2026, 4, 11, 15, 0, tzinfo=UTC)
         start = now - timedelta(hours=2, minutes=30)

@@ -10,9 +10,13 @@ from app.api.schemas import LlmRequest, LlmResponse
 from app.llm.errors import LlmIntegrationError
 
 
-def generate_local_response(request: LlmRequest) -> LlmResponse:
+def generate_local_response(
+    request: LlmRequest,
+    provider_label: str = "local",
+    default_model_env: str = "LOCAL_LLM_MODEL",
+) -> LlmResponse:
     base_url = os.getenv("LOCAL_LLM_BASE_URL", "http://127.0.0.1:11434").rstrip("/")
-    model = request.model or os.getenv("LOCAL_LLM_MODEL", "llama3.2:latest")
+    model = request.model or os.getenv(default_model_env) or os.getenv("LOCAL_LLM_MODEL", "llama3.2:latest")
     endpoint = f"{base_url}/api/chat"
 
     payload = {
@@ -63,7 +67,7 @@ def generate_local_response(request: LlmRequest) -> LlmResponse:
     return LlmResponse(
         response=content.strip(),
         model=str(response_json.get("model", model)),
-        provider="local",
+        provider=provider_label,
         metadata=metadata,
     )
 

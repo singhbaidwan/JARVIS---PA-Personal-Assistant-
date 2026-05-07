@@ -1,4 +1,4 @@
-# JARVIS - Personal Assistant (Phase 0 + Phase 1 + Phase 2 + Phase 3 + Phase 4)
+# JARVIS - Personal Assistant (Phase 0 + Phase 1 + Phase 2 + Phase 3 + Phase 4 + Phase 5 + Phase 6)
 
 This repository now includes:
 - Phase 0 monorepo setup
@@ -10,6 +10,13 @@ This repository now includes:
   - AI intelligence APIs (`/predict`, `/anomaly`, `/recommendations`)
   - LLM endpoint (`/llm`) with OpenAI integration
   - Avatar UI starter (`jarvis-ui/public`)
+- Phase 5 behavior learning integration:
+  - Core-to-AI prediction bridge (`POST /behavior-learning/predict`)
+  - Safe command enqueue guardrail (`OPEN_APP` / `CLOSE_APP` only, confidence threshold)
+- Phase 6 guardian anomaly detection:
+  - Agent emits `RESOURCE_SAMPLE` events from macOS process telemetry
+  - AI returns actionable CPU/memory/network and unusual-app signals
+  - Core-to-AI guardian bridge (`POST /guardian/anomaly`)
 
 ## Monorepo Layout
 
@@ -33,8 +40,10 @@ This repository now includes:
 - `POST /workflow`
 - `GET /workflow`
 - `GET /workflow/{id}`
+- `POST /behavior-learning/predict`
+- `POST /guardian/anomaly`
 - `GET /health`
-- `POST /llm`
+- `POST /llm` (`provider=openai|claude|gemini|ollama|llama|local`)
 - `POST /predict`
 - `POST /anomaly`
 - `POST /recommendations`
@@ -54,6 +63,7 @@ export JARVIS_AGENT_ID=jarvis-agent
 export JARVIS_COMMAND_POLL_INTERVAL_SECONDS=3
 export JARVIS_COMMAND_WORKER_COUNT=2
 export JARVIS_COMMAND_EXECUTION_TIMEOUT_SECONDS=15
+export JARVIS_RESOURCE_SAMPLE_INTERVAL_SECONDS=30
 ```
 
 Core lease recovery (optional):
@@ -232,7 +242,33 @@ curl -X POST http://127.0.0.1:8000/llm \
   }'
 ```
 
-7. Run avatar UI:
+7. Test LLM endpoint with Claude (Anthropic):
+
+```bash
+export ANTHROPIC_API_KEY="<your-key>"
+curl -X POST http://127.0.0.1:8000/llm \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider":"claude",
+    "model":"claude-3-5-sonnet-latest",
+    "prompt":"Plan my next 2 hours for deep work."
+  }'
+```
+
+8. Test LLM endpoint with Gemini:
+
+```bash
+export GEMINI_API_KEY="<your-key>"
+curl -X POST http://127.0.0.1:8000/llm \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider":"gemini",
+    "model":"gemini-1.5-flash",
+    "prompt":"Plan my next 2 hours for deep work."
+  }'
+```
+
+9. Run avatar UI:
 
 ```bash
 cd jarvis-ui
@@ -240,6 +276,89 @@ npm run dev
 ```
 
 Open `http://127.0.0.1:5173`, confirm the API URL points to `http://127.0.0.1:8000/llm`, then send a prompt.
+
+## Verify Phase 5 End-to-End
+
+From repo root:
+
+1. Start services:
+
+```bash
+./scripts/start_all.sh
+./scripts/status.sh
+```
+
+2. Trigger behavior learning from core (`Core -> AI -> Prediction -> Core`):
+
+```bash
+curl -X POST http://127.0.0.1:8080/behavior-learning/predict \
+  -H "Content-Type: application/json" \
+  -d '{"eventLimit":80,"enqueueIfSafe":true}'
+```
+
+Expected response includes:
+- `prediction` from `jarvis-ai /predict`
+- `enqueue.enqueued=true|false` with reason
+- when confidence and policy checks pass, `enqueue.commandId` is populated
+
+3. Inspect command queue:
+
+```bash
+curl http://127.0.0.1:8080/command
+```
+
+4. Stop services:
+
+```bash
+./scripts/stop_all.sh
+```
+
+## Verify Phase 6 End-to-End
+
+From repo root:
+
+1. Start services:
+
+```bash
+./scripts/start_all.sh
+./scripts/status.sh
+```
+
+2. Seed an obvious CPU guardian signal:
+
+```bash
+curl -X POST http://127.0.0.1:8080/event \
+  -H "Content-Type: application/json" \
+  -d '{"type":"RESOURCE_SAMPLE","payload":{"process":"Chrome","pid":123,"cpu_percent":91,"memory_percent":18},"source":"manual-phase-6"}'
+```
+
+3. Trigger the core guardian scan (`Core -> AI -> Anomaly -> Core`):
+
+```bash
+curl -X POST http://127.0.0.1:8080/guardian/anomaly \
+  -H "Content-Type: application/json" \
+  -d '{"eventLimit":120}'
+```
+
+Expected response includes:
+- `anomalyDetected=true`
+- `reason` similar to `Chrome using 91% CPU`
+- `signals` with CPU, memory, network, or unusual-app details
+
+4. Let the running agent emit real `RESOURCE_SAMPLE` events, then scan again:
+
+```bash
+curl http://127.0.0.1:8080/event
+curl -X POST http://127.0.0.1:8080/guardian/anomaly \
+  -H "Content-Type: application/json" \
+  -d '{"eventLimit":120}'
+```
+
+5. Stop services:
+
+```bash
+./scripts/stop_all.sh
+```
 
 ## Testing
 

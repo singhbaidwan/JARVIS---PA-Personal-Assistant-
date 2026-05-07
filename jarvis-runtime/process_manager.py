@@ -1,6 +1,7 @@
 import os
 import signal
 import subprocess
+import time
 from datetime import datetime
 from dataclasses import dataclass
 from pathlib import Path
@@ -27,10 +28,77 @@ class ProcessManager:
     def _log_file(self, service_name: str) -> Path:
         return self.log_dir / f"{service_name}.log"
 
+    def _read_pid(self, service_name: str) -> int | None:
+        pid_file = self._pid_file(service_name)
+        if not pid_file.exists():
+            return None
+
+        try:
+            pid = int(pid_file.read_text().strip())
+        except (TypeError, ValueError):
+            pid_file.unlink(missing_ok=True)
+            return None
+
+        if pid <= 0:
+            pid_file.unlink(missing_ok=True)
+            return None
+
+        return pid
+
+    def _is_pid_alive(self, pid: int) -> bool:
+        # If this runtime process is the parent, reap defunct children so
+        # zombie processes do not look "alive" during stop checks.
+        try:
+            reaped_pid, _ = os.waitpid(pid, os.WNOHANG)
+            if reaped_pid == pid:
+                return False
+        except ChildProcessError:
+            pass
+        except OSError:
+            pass
+
+        try:
+            os.kill(pid, 0)
+            return True
+        except PermissionError:
+            return True
+        except ProcessLookupError:
+            return False
+
+    def _send_signal(self, pid: int, sig: int) -> bool:
+        # Start with process-group signaling because services run in their own
+        # session and may spawn subprocesses that need the same signal.
+        try:
+            os.killpg(pid, sig)
+            return True
+        except ProcessLookupError:
+            pass
+        except PermissionError:
+            pass
+        except OSError:
+            pass
+
+        try:
+            os.kill(pid, sig)
+            return True
+        except PermissionError:
+            return False
+        except ProcessLookupError:
+            return False
+
+    def _wait_for_exit(self, pid: int, timeout_seconds: float, poll_interval_seconds: float = 0.25) -> bool:
+        deadline = time.monotonic() + timeout_seconds
+        while time.monotonic() < deadline:
+            if not self._is_pid_alive(pid):
+                return True
+            time.sleep(poll_interval_seconds)
+        return not self._is_pid_alive(pid)
+
     def start(self, config: ServiceConfig) -> int:
         pid_file = self._pid_file(config.name)
-        if pid_file.exists() and self.is_running(config.name):
-            return int(pid_file.read_text().strip())
+        existing_pid = self._read_pid(config.name)
+        if existing_pid is not None and self._is_pid_alive(existing_pid):
+            return existing_pid
 
         log_file = self._log_file(config.name)
         with log_file.open("a", encoding="utf-8") as log_handle:
@@ -49,34 +117,47 @@ class ProcessManager:
         pid_file.write_text(str(process.pid))
         return process.pid
 
-    def stop(self, service_name: str) -> bool:
+    def stop(
+        self,
+        service_name: str,
+        grace_timeout_seconds: float = 8.0,
+        kill_timeout_seconds: float = 2.0,
+    ) -> bool:
         pid_file = self._pid_file(service_name)
-        if not pid_file.exists():
+        pid = self._read_pid(service_name)
+        if pid is None:
             return False
 
-        pid = int(pid_file.read_text().strip())
-        try:
-            os.kill(pid, signal.SIGTERM)
-        except PermissionError:
+        if not self._send_signal(pid, signal.SIGTERM):
+            if not self._is_pid_alive(pid):
+                pid_file.unlink(missing_ok=True)
+                return False
             return False
-        except ProcessLookupError:
+
+        if self._wait_for_exit(pid, grace_timeout_seconds):
             pid_file.unlink(missing_ok=True)
+            return True
+
+        if not self._send_signal(pid, signal.SIGKILL):
+            if not self._is_pid_alive(pid):
+                pid_file.unlink(missing_ok=True)
+                return True
             return False
 
-        pid_file.unlink(missing_ok=True)
-        return True
+        if self._wait_for_exit(pid, kill_timeout_seconds):
+            pid_file.unlink(missing_ok=True)
+            return True
+
+        return False
 
     def is_running(self, service_name: str) -> bool:
         pid_file = self._pid_file(service_name)
-        if not pid_file.exists():
+        pid = self._read_pid(service_name)
+        if pid is None:
             return False
 
-        pid = int(pid_file.read_text().strip())
-        try:
-            os.kill(pid, 0)
+        if self._is_pid_alive(pid):
             return True
-        except PermissionError:
-            return True
-        except ProcessLookupError:
-            pid_file.unlink(missing_ok=True)
-            return False
+
+        pid_file.unlink(missing_ok=True)
+        return False

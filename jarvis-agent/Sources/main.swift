@@ -4,6 +4,10 @@ let config = Config.load()
 let coreClient = CoreClient(baseURL: config.coreBaseURL)
 let eventEmitter = HttpEventEmitter(coreClient: coreClient)
 let appMonitor = AppMonitor(eventEmitter: eventEmitter)
+let resourceMonitor = ResourceMonitor(
+    eventEmitter: eventEmitter,
+    intervalSeconds: config.resourceSampleIntervalSeconds
+)
 let commandExecutor = CommandExecutor()
 let commandPoller = CommandPoller(
     coreClient: coreClient,
@@ -15,5 +19,6 @@ let commandPoller = CommandPoller(
 )
 
 appMonitor.start()
+resourceMonitor.start()
 commandPoller.start()
 RunLoop.main.run()

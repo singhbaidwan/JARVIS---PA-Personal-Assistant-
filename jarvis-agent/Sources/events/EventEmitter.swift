@@ -2,6 +2,7 @@ import Foundation
 
 protocol EventEmitter {
     func emitAppSwitched(from: String, to: String)
+    func emitResourceSample(_ sample: ResourceSamplePayload)
 }
 
 final class HttpEventEmitter: EventEmitter {
@@ -15,6 +16,18 @@ final class HttpEventEmitter: EventEmitter {
         let event = EventEnvelope(
             type: "APP_SWITCHED",
             payload: AppSwitchPayload(from: from, to: to),
+            source: "jarvis-agent"
+        )
+
+        Task {
+            await coreClient.post(event)
+        }
+    }
+
+    func emitResourceSample(_ sample: ResourceSamplePayload) {
+        let event = EventEnvelope(
+            type: "RESOURCE_SAMPLE",
+            payload: sample,
             source: "jarvis-agent"
         )
 

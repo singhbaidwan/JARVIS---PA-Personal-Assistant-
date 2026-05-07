@@ -106,20 +106,20 @@ def detect_anomalies(events: list[EventInput], reference_time: datetime | None =
     score = 0.0
     signals: list[str] = []
 
-    cpu_spikes = _count_threshold_hits(events, "cpu_percent", 85)
-    if cpu_spikes:
+    cpu_signals = _resource_spike_signals(events, "cpu_percent", 85, "CPU")
+    if cpu_signals:
         score += 30.0
-        signals.append(f"CPU usage spike detected in {cpu_spikes} event(s)")
+        signals.extend(cpu_signals)
 
-    memory_spikes = _count_threshold_hits(events, "memory_percent", 90)
-    if memory_spikes:
+    memory_signals = _resource_spike_signals(events, "memory_percent", 90, "memory")
+    if memory_signals:
         score += 30.0
-        signals.append(f"Memory usage spike detected in {memory_spikes} event(s)")
+        signals.extend(memory_signals)
 
-    network_spikes = _count_threshold_hits(events, "network_kbps", 50_000)
-    if network_spikes:
+    network_signals = _resource_spike_signals(events, "network_kbps", 50_000, "network throughput")
+    if network_signals:
         score += 25.0
-        signals.append(f"Network throughput spike detected in {network_spikes} event(s)")
+        signals.extend(network_signals)
 
     recent_volume = _count_recent_events(events, reference, timedelta(hours=1))
     baseline = _hourly_baseline(events)
@@ -286,13 +286,47 @@ def _hour_distance(hour_a: int, hour_b: int) -> int:
     return min((hour_a - hour_b) % 24, (hour_b - hour_a) % 24)
 
 
-def _count_threshold_hits(events: list[EventInput], key: str, threshold: float) -> int:
-    hits = 0
+def _resource_spike_signals(
+    events: list[EventInput],
+    key: str,
+    threshold: float,
+    label: str,
+) -> list[str]:
+    spikes: list[tuple[float, str | None]] = []
     for event in events:
         value = event.payload.get(key)
         if isinstance(value, (int, float)) and float(value) >= threshold:
-            hits += 1
-    return hits
+            spikes.append((float(value), _extract_resource_subject(event)))
+
+    if not spikes:
+        return []
+
+    highest_value, highest_subject = max(spikes, key=lambda item: item[0])
+    formatted_value = _format_metric_value(highest_value, key)
+    if highest_subject:
+        primary_signal = f"{highest_subject} using {formatted_value} {label}"
+    else:
+        primary_signal = f"{label.capitalize()} spike detected at {formatted_value}"
+
+    if len(spikes) == 1:
+        return [primary_signal]
+    return [f"{primary_signal} across {len(spikes)} event(s)"]
+
+
+def _extract_resource_subject(event: EventInput) -> str | None:
+    for key in ("process", "app", "application", "name", "command", "bundle_id", "bundleId"):
+        value = event.payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _format_metric_value(value: float, key: str) -> str:
+    if key == "network_kbps":
+        if value >= 1000:
+            return f"{value / 1000:.1f} Mbps"
+        return f"{value:.0f} Kbps"
+    return f"{value:.0f}%"
 
 
 def _count_recent_events(events: list[EventInput], reference: datetime, window: timedelta) -> int:
@@ -322,13 +356,17 @@ def _behavioral_outlier_signal(
     if len(dated) < 10:
         return None
 
-    _, latest_app = max(dated, key=lambda item: item[0])
-    overall_counts = Counter(app for _, app in dated)
-    latest_frequency = overall_counts[latest_app] / max(len(dated), 1)
+    latest_ts, latest_app = max(dated, key=lambda item: item[0])
+    historical = [(ts, app) for ts, app in dated if ts != latest_ts]
+    if len(historical) < 10:
+        return None
+
+    overall_counts = Counter(app for _, app in historical)
+    latest_frequency = overall_counts[latest_app] / max(len(historical), 1)
 
     contextual_counts = Counter(
         app
-        for ts, app in dated
+        for ts, app in historical
         if _day_context(ts) == _day_context(reference) and _hour_distance(ts.hour, reference.hour) <= 1
     )
     contextual_frequency = contextual_counts.get(latest_app, 0) / max(sum(contextual_counts.values()), 1)

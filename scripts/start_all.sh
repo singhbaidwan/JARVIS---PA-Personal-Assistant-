@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
-"$(dirname "$0")/../jarvis-runtime/scripts/start.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$SCRIPT_DIR/../jarvis-runtime/scripts/start.sh"
