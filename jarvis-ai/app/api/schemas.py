@@ -71,3 +71,29 @@ class RecommendationResponse(BaseModel):
     peak_productivity_window: str | None = None
     summary: str
     recommendations: list[Recommendation] = Field(default_factory=list)
+
+
+class SearchRequest(BaseModel):
+    query: str
+    roots: list[str] = Field(default_factory=list)
+    max_results: int = Field(default=10, ge=1, le=50)
+    include_content: bool = True
+    reference_time: datetime | None = None
+
+
+class SearchResult(BaseModel):
+    path: str
+    name: str
+    extension: str
+    size_bytes: int
+    modified_at: datetime
+    score: float
+    match_type: str
+    snippet: str | None = None
+    reason: str
+
+
+class SearchResponse(BaseModel):
+    query: str
+    indexed_count: int
+    results: list[SearchResult] = Field(default_factory=list)

@@ -1,4 +1,4 @@
-# JARVIS - Personal Assistant (Phase 0 + Phase 1 + Phase 2 + Phase 3 + Phase 4 + Phase 5 + Phase 6)
+# JARVIS - Personal Assistant (Phase 0 + Phase 1 + Phase 2 + Phase 3 + Phase 4 + Phase 5 + Phase 6 + Phase 7)
 
 This repository now includes:
 - Phase 0 monorepo setup
@@ -17,6 +17,10 @@ This repository now includes:
   - Agent emits `RESOURCE_SAMPLE` events from macOS process telemetry
   - AI returns actionable CPU/memory/network and unusual-app signals
   - Core-to-AI guardian bridge (`POST /guardian/anomaly`)
+- Phase 7 smart search:
+  - Local file indexing over requested roots
+  - Metadata, filename, and text/code content search
+  - Core-to-AI search bridge (`POST /search`)
 
 ## Monorepo Layout
 
@@ -42,11 +46,13 @@ This repository now includes:
 - `GET /workflow/{id}`
 - `POST /behavior-learning/predict`
 - `POST /guardian/anomaly`
+- `POST /search`
 - `GET /health`
 - `POST /llm` (`provider=openai|claude|gemini|ollama|llama|local`)
 - `POST /predict`
 - `POST /anomaly`
 - `POST /recommendations`
+- `POST /search`
 
 ## Agent Configuration
 
@@ -355,6 +361,53 @@ curl -X POST http://127.0.0.1:8080/guardian/anomaly \
 ```
 
 5. Stop services:
+
+```bash
+./scripts/stop_all.sh
+```
+
+## Verify Phase 7 End-to-End
+
+From repo root:
+
+1. Start services:
+
+```bash
+./scripts/start_all.sh
+./scripts/status.sh
+```
+
+2. Search through a local root via core:
+
+```bash
+curl -X POST http://127.0.0.1:8080/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query":"Find python file I edited yesterday",
+    "roots":["./jarvis-ai"],
+    "maxResults":10,
+    "includeContent":true
+  }'
+```
+
+Expected response includes:
+- `indexedCount` with the number of files scanned
+- `results[]` with `path`, `modifiedAt`, `score`, `matchType`, and optional `snippet`
+- Python queries are biased toward `.py` files; `today`, `yesterday`, and `last week` apply modified-time filters
+
+3. Search inside text/code content:
+
+```bash
+curl -X POST http://127.0.0.1:8080/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query":"\"behavioral outlier\"",
+    "roots":["./jarvis-ai/app"],
+    "maxResults":5
+  }'
+```
+
+4. Stop services:
 
 ```bash
 ./scripts/stop_all.sh

@@ -22,9 +22,13 @@ jarvis:
     base-url: http://127.0.0.1:8000
     predict-path: /predict
     anomaly-path: /anomaly
+    search-path: /search
   behavior-learning:
     default-event-limit: 120
     min-confidence-to-enqueue: 0.6
     enqueue-source: jarvis-core-behavior-learning
   guardian:
     default-event-limit: 120
+  search:
+    base-dir: ../
+    default-roots: ../

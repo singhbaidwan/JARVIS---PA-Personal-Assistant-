@@ -16,12 +16,12 @@ def load_service_configs() -> list[ServiceConfig]:
     return [
         ServiceConfig(
             name="jarvis-core",
-            command="./gradlew bootRun",
+            command="./gradlew --no-daemon bootRun",
             workdir=ROOT_DIR / "jarvis-core",
         ),
         ServiceConfig(
             name="jarvis-ai",
-            command="python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload",
+            command="python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8000",
             workdir=ROOT_DIR / "jarvis-ai",
         ),
         ServiceConfig(
