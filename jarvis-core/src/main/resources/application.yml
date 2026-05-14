@@ -23,6 +23,7 @@ jarvis:
     predict-path: /predict
     anomaly-path: /anomaly
     search-path: /search
+    assistant-chat-path: /assistant/chat
   behavior-learning:
     default-event-limit: 120
     min-confidence-to-enqueue: 0.6
@@ -32,3 +33,5 @@ jarvis:
   search:
     base-dir: ../
     default-roots: ../
+  assistant:
+    default-event-limit: 20

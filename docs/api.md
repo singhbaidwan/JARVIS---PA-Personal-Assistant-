@@ -1,6 +1,7 @@
 # API
 
 ## jarvis-core
+- `POST /assistant/chat` (context-injected chat; validates AI action suggestions without executing them)
 - `POST /event`
 - `GET /event`
 - `GET /insights/daily`
@@ -14,6 +15,7 @@
 
 ## jarvis-ai
 - `GET /health`
+- `POST /assistant/chat`
 - `POST /llm` (`provider=openai|claude|gemini|ollama|llama|local`)
 - `POST /predict`
 - `POST /anomaly`

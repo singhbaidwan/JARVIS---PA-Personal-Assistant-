@@ -97,3 +97,35 @@ class SearchResponse(BaseModel):
     query: str
     indexed_count: int
     results: list[SearchResult] = Field(default_factory=list)
+
+
+class AssistantActionSuggestion(BaseModel):
+    action: str
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    reason: str
+    app: str | None = None
+    query: str | None = None
+
+
+class AssistantContext(BaseModel):
+    recent_events: list[EventInput] = Field(default_factory=list)
+    search_results: list[SearchResult] = Field(default_factory=list)
+    facts: dict[str, Any] = Field(default_factory=dict)
+
+
+class AssistantChatRequest(BaseModel):
+    message: str
+    provider: str | None = None
+    model: str | None = None
+    temperature: float = Field(default=0.3, ge=0.0, le=2.0)
+    max_tokens: int = Field(default=500, ge=16, le=4096)
+    context: AssistantContext = Field(default_factory=AssistantContext)
+
+
+class AssistantChatResponse(BaseModel):
+    response: str
+    model: str
+    provider: str
+    suggested_actions: list[AssistantActionSuggestion] = Field(default_factory=list)
+    context_summary: str
+    metadata: dict[str, Any] = Field(default_factory=dict)

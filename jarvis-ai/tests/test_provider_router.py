@@ -36,6 +36,14 @@ class ProviderRouterTests(unittest.TestCase):
         self.assertEqual("llama", result.provider)
         mocked_local.assert_called_once()
 
+    def test_generator_for_offline_provider(self) -> None:
+        generator = generator_for_provider("offline")
+        result = generator(LlmRequest(prompt="User message:\nFind python files", provider="offline"))
+
+        self.assertEqual("offline", result.provider)
+        self.assertEqual("jarvis-offline-rules", result.model)
+        self.assertIn("SEARCH_FILES", result.response)
+
 
 if __name__ == "__main__":
     unittest.main()

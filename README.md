@@ -1,4 +1,4 @@
-# JARVIS - Personal Assistant (Phase 0 + Phase 1 + Phase 2 + Phase 3 + Phase 4 + Phase 5 + Phase 6 + Phase 7)
+# JARVIS - Personal Assistant (Phase 0 + Phase 1 + Phase 2 + Phase 3 + Phase 4 + Phase 5 + Phase 6 + Phase 7 + Phase 8)
 
 This repository now includes:
 - Phase 0 monorepo setup
@@ -21,6 +21,10 @@ This repository now includes:
   - Local file indexing over requested roots
   - Metadata, filename, and text/code content search
   - Core-to-AI search bridge (`POST /search`)
+- Phase 8 chat-based control:
+  - Context-injected assistant chat (`POST /assistant/chat`)
+  - Local/provider LLM routing through `jarvis-ai`
+  - Core validates suggested actions and does not execute from chat
 
 ## Monorepo Layout
 
@@ -47,12 +51,14 @@ This repository now includes:
 - `POST /behavior-learning/predict`
 - `POST /guardian/anomaly`
 - `POST /search`
+- `POST /assistant/chat`
 - `GET /health`
 - `POST /llm` (`provider=openai|claude|gemini|ollama|llama|local`)
 - `POST /predict`
 - `POST /anomaly`
 - `POST /recommendations`
 - `POST /search`
+- `POST /assistant/chat`
 
 ## Agent Configuration
 
@@ -408,6 +414,41 @@ curl -X POST http://127.0.0.1:8080/search \
 ```
 
 4. Stop services:
+
+```bash
+./scripts/stop_all.sh
+```
+
+## Verify Phase 8 End-to-End
+
+From repo root:
+
+1. Start services:
+
+```bash
+./scripts/start_all.sh
+./scripts/status.sh
+```
+
+2. Ask through core chat control:
+
+```bash
+curl -X POST http://127.0.0.1:8080/assistant/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message":"Find the Python file I edited yesterday, then suggest what to open.",
+    "provider":"local",
+    "eventLimit":20
+  }'
+```
+
+Expected response includes:
+- `response` from the configured LLM provider
+- `contextSummary` with recent local context injected by core
+- `suggestedActions[]` with `approved=true|false`
+- no direct execution; core only validates suggestions from chat
+
+3. Stop services:
 
 ```bash
 ./scripts/stop_all.sh

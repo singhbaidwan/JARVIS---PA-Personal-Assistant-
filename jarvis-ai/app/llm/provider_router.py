@@ -8,6 +8,7 @@ from app.llm.anthropic_client import generate_anthropic_response
 from app.llm.errors import LlmIntegrationError
 from app.llm.gemini_client import generate_gemini_response
 from app.llm.local_client import generate_local_response
+from app.llm.offline_client import generate_offline_response
 from app.llm.openai_client import generate_openai_response
 
 LlmGenerator = Callable[[LlmRequest], LlmResponse]
@@ -32,8 +33,10 @@ def generator_for_provider(provider: str) -> LlmGenerator:
             provider_label="llama",
             default_model_env="LLAMA_MODEL",
         )
+    if provider in {"offline", "rules", "dev"}:
+        return generate_offline_response
 
     raise LlmIntegrationError(
         "Unsupported provider. Use one of: openai, claude/anthropic, gemini/google, "
-        "ollama/local/colima, llama."
+        "ollama/local/colima, llama, offline/rules."
     )
