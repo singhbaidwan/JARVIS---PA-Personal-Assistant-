@@ -19,13 +19,17 @@ def generate_local_response(
     model = request.model or os.getenv(default_model_env) or os.getenv("LOCAL_LLM_MODEL", "llama3.2:latest")
     endpoint = f"{base_url}/api/chat"
 
+    options: dict[str, Any] = {
+        "temperature": request.temperature,
+    }
+    if request.max_tokens and request.max_tokens > 0:
+        options["num_predict"] = request.max_tokens
+
     payload = {
         "model": model,
         "messages": _messages_for_request(request),
         "stream": False,
-        "options": {
-            "temperature": request.temperature,
-        },
+        "options": options,
     }
     body = json.dumps(payload).encode("utf-8")
     http_request = urllib.request.Request(
@@ -35,8 +39,9 @@ def generate_local_response(
         method="POST",
     )
 
+    request_timeout = max(120, request.max_tokens // 2) if request.max_tokens else 120
     try:
-        with urllib.request.urlopen(http_request, timeout=60) as response:
+        with urllib.request.urlopen(http_request, timeout=request_timeout) as response:
             response_json = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as error:
         detail = error.read().decode("utf-8", errors="ignore")

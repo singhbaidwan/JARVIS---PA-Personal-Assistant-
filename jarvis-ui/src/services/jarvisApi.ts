@@ -67,6 +67,62 @@ export interface BehaviorResponse {
   };
 }
 
+export interface WorkflowStepResponse {
+  id: number | null;
+  workflowRunId: number;
+  stepOrder: number;
+  action: string;
+  params: JsonRecord;
+  priority: number;
+  maxAttempts: number;
+  dependsOn: number[];
+  rollbackAction: string | null;
+  rollbackParams: JsonRecord | null;
+  status: "QUEUED" | "IN_PROGRESS" | "SUCCEEDED" | "FAILED" | "SKIPPED";
+  commandId: number | null;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkflowRunResponse {
+  id: number | null;
+  name: string | null;
+  source: string | null;
+  status: "QUEUED" | "IN_PROGRESS" | "SUCCEEDED" | "FAILED" | "SKIPPED";
+  totalSteps: number;
+  completedSteps: number;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
+  steps: WorkflowStepResponse[];
+}
+
+export interface WorkflowStepRequest {
+  action: string;
+  app?: string;
+  params?: Record<string, unknown>;
+  priority?: number;
+  maxAttempts?: number;
+  dependsOn?: number[];
+  rollbackAction?: string;
+  rollbackParams?: Record<string, unknown>;
+}
+
+export interface WorkflowConditionRequest {
+  leftKey: string;
+  operator: "LT" | "LTE" | "GT" | "GTE" | "EQ" | "NEQ";
+  rightValue: unknown;
+}
+
+export interface WorkflowCreateRequest {
+  name?: string;
+  source?: string;
+  condition?: WorkflowConditionRequest;
+  context?: Record<string, unknown>;
+  steps: WorkflowStepRequest[];
+}
+
 export type JsonRecord = Record<string, unknown>;
 
 export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -95,3 +151,4 @@ export async function checkHealth(endpoints: Endpoints): Promise<HealthState> {
     ai: ai.status === "fulfilled" ? "online" : "down",
   };
 }
+

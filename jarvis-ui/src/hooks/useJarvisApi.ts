@@ -10,6 +10,8 @@ import {
   type JsonRecord,
   joinUrl,
   type SearchResponse,
+  type WorkflowCreateRequest,
+  type WorkflowRunResponse,
 } from "../services/jarvisApi";
 
 export type ConsoleMode = "idle" | "thinking" | "guardian" | "success" | "error";
@@ -98,6 +100,42 @@ export function useJarvisApi() {
     [endpoints.coreUrl],
   );
 
+  const fetchWorkflows = useCallback(
+    async (limit = 25): Promise<WorkflowRunResponse[]> => {
+      setMode("thinking");
+      setStatus("Loading workflows");
+      const response = await fetchJson<WorkflowRunResponse[]>(
+        joinUrl(endpoints.coreUrl, `/workflow?limit=${limit}`),
+      );
+      setMode("success");
+      setStatus(`Loaded ${response.length} workflows`);
+      return response;
+    },
+    [endpoints.coreUrl],
+  );
+
+  const fetchWorkflowById = useCallback(
+    async (id: number): Promise<WorkflowRunResponse> => {
+      return fetchJson<WorkflowRunResponse>(joinUrl(endpoints.coreUrl, `/workflow/${id}`));
+    },
+    [endpoints.coreUrl],
+  );
+
+  const createWorkflow = useCallback(
+    async (request: WorkflowCreateRequest): Promise<WorkflowRunResponse> => {
+      setMode("thinking");
+      setStatus("Creating workflow");
+      const response = await fetchJson<WorkflowRunResponse>(joinUrl(endpoints.coreUrl, "/workflow"), {
+        method: "POST",
+        body: JSON.stringify(request),
+      });
+      setMode("success");
+      setStatus("Workflow created");
+      return response;
+    },
+    [endpoints.coreUrl],
+  );
+
   const markError = useCallback((message: string) => {
     setMode("error");
     setStatus(message);
@@ -117,8 +155,12 @@ export function useJarvisApi() {
     runBehaviorPrediction,
     fetchCoreList,
     fetchInsights,
+    fetchWorkflows,
+    fetchWorkflowById,
+    createWorkflow,
     markError,
   };
 }
 
 export type JarvisApi = ReturnType<typeof useJarvisApi>;
+

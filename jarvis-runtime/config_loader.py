@@ -33,4 +33,9 @@ def load_service_configs() -> list[ServiceConfig]:
             ),
             workdir=ROOT_DIR / "jarvis-agent",
         ),
+        ServiceConfig(
+            name="jarvis-ui",
+            command="npm run dev",
+            workdir=ROOT_DIR / "jarvis-ui",
+        ),
     ]
