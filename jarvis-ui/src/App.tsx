@@ -1,15 +1,16 @@
-import { useEffect } from "react";
-import { AssistantPanel } from "./components/AssistantPanel";
-import { AvatarScene } from "./components/AvatarScene";
-import { BehaviorPanel } from "./components/BehaviorPanel";
-import { GuardianPanel } from "./components/GuardianPanel";
-import { OperationsPanel } from "./components/OperationsPanel";
-import { SearchPanel } from "./components/SearchPanel";
-import { TopBar } from "./components/TopBar";
+import { useEffect, useState } from "react";
+import { Sidebar, type TabID } from "./components/Sidebar";
+import { Dashboard } from "./pages/Dashboard";
+import { SystemHealth } from "./pages/SystemHealth";
+import { Knowledge } from "./pages/Knowledge";
+import { Workflows } from "./pages/Workflows";
+import { Settings } from "./pages/Settings";
 import { useJarvisApi } from "./hooks/useJarvisApi";
+import { TopBar } from "./components/TopBar";
 
 export function App() {
   const api = useJarvisApi();
+  const [activeTab, setActiveTab] = useState<TabID>("dashboard");
 
   useEffect(() => {
     api.refreshHealth().catch((error: unknown) => {
@@ -17,48 +18,41 @@ export function App() {
     });
   }, [api.refreshHealth, api.markError]);
 
+  const renderContent = () => {
+    switch (activeTab) {
+      case "dashboard":
+        return <Dashboard api={api} />;
+      case "health":
+        return <SystemHealth api={api} />;
+      case "knowledge":
+        return <Knowledge api={api} />;
+      case "workflows":
+        return <Workflows api={api} />;
+      case "settings":
+        return <Settings api={api} />;
+      default:
+        return <Dashboard api={api} />;
+    }
+  };
+
   return (
     <div className="app-shell">
-      <TopBar
-        endpoints={api.endpoints}
-        health={api.health}
-        onEndpointsChange={api.setEndpoints}
-        onRefreshHealth={() => {
-          api.refreshHealth().catch((error: unknown) => {
-            api.markError(error instanceof Error ? error.message : "Health check failed");
-          });
-        }}
-      />
-      <main className="dashboard">
-        <AvatarScene mode={api.mode} status={api.status} />
-        <section className="panel health-panel" aria-labelledby="health-title">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">System</p>
-              <h2 id="health-title">Service State</h2>
-            </div>
-          </div>
-          <div className="health-grid">
-            <article className="metric">
-              <span>Core</span>
-              <strong>{api.health.core}</strong>
-            </article>
-            <article className="metric">
-              <span>AI</span>
-              <strong>{api.health.ai}</strong>
-            </article>
-            <article className="metric">
-              <span>Mode</span>
-              <strong>{api.mode}</strong>
-            </article>
-          </div>
-        </section>
-        <AssistantPanel onError={api.markError} onSendMessage={api.postAssistantChat} />
-        <SearchPanel onError={api.markError} onSearch={api.runSearch} />
-        <GuardianPanel onError={api.markError} onScan={api.runGuardianScan} />
-        <BehaviorPanel onError={api.markError} onPredict={api.runBehaviorPrediction} />
-        <OperationsPanel fetchCoreList={api.fetchCoreList} fetchInsights={api.fetchInsights} onError={api.markError} />
-      </main>
+      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <div className="main-container">
+        <TopBar
+          endpoints={api.endpoints}
+          health={api.health}
+          onEndpointsChange={api.setEndpoints}
+          onRefreshHealth={() => {
+            api.refreshHealth().catch((error: unknown) => {
+              api.markError(error instanceof Error ? error.message : "Health check failed");
+            });
+          }}
+        />
+        <main className="main-content">
+          {renderContent()}
+        </main>
+      </div>
     </div>
   );
 }

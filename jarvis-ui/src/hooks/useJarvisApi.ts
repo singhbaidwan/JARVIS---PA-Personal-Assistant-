@@ -120,3 +120,5 @@ export function useJarvisApi() {
     markError,
   };
 }
+
+export type JarvisApi = ReturnType<typeof useJarvisApi>;
